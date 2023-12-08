@@ -4,6 +4,7 @@
 #pragma once
 
 #include "quantum.h"
+#include "print.h"
 
 enum custom_keycodes {
     RF_DFU = QK_KB_0,
@@ -117,6 +118,10 @@ typedef enum {
 
 #define RF_LONG_PRESS_DELAY     30
 #define DEV_RESET_PRESS_DELAY   30
+
+#define KC_MAC_HAEN             LALT(LCTL(KC_SPC))
+#define KC_HAEN                 KC_LNG1
+#define KC_MAC_SLEEP            LALT(LGUI(KC_KB_POWER))
 
 typedef struct
 {
