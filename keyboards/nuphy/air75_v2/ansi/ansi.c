@@ -606,6 +606,32 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 }
 
+void bat_percent_keyled(uint8_t bat_percent) {
+    uint8_t k = 0;
+    uint8_t i = 0;
+
+    if (bat_percent >= 100) {
+        k = 10;
+    } else if (bat_percent >= 0) {
+        k = bat_percent / 10;
+    }
+
+    for (;i < k; i++) {
+        rgb_matrix_set_color(29 - i, 128 - i * 10, 128, 128);
+    }
+
+    for (;i < 10; i++) {
+        rgb_matrix_set_color(29 - i, 0, 0, 0);
+    }
+}
+
+bool rgb_matrix_indicators_user(void) {
+    if(f_bat_hold) {
+        bat_percent_keyled(dev_info.rf_baterry);
+    }
+    return false;
+}
+
 /* qmk keyboard post init */
 void keyboard_post_init_user(void) {
     gpio_init();
