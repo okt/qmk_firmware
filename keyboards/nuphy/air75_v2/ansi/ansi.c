@@ -606,9 +606,20 @@ bool process_record_user(uint16_t keycode, keyrecord_t *record) {
     }
 }
 
+uint32_t bat_p_timer = 0;
+uint8_t bat_p_current = 0;
+bool bat_p_show = 0;
+
+void bat_percent_keyled_color(void) {
+    uint8_t i = 0;
+    for (;i < bat_p_current; i++) {
+        rgb_matrix_set_color(29 - i, 128 - i * 10, i * 8 + 10, 128);
+    }
+}
+
 void bat_percent_keyled(uint8_t bat_percent) {
     uint8_t k = 0;
-    uint8_t i = 0;
+    uint8_t bat_adjust = 0;
 
     if (bat_percent >= 100) {
         k = 10;
@@ -616,18 +627,66 @@ void bat_percent_keyled(uint8_t bat_percent) {
         k = bat_percent / 10;
     }
 
-    for (;i < k; i++) {
-        rgb_matrix_set_color(29 - i, 128 - i * 10, 128, 128);
+    if (bat_p_timer == 0) {
+        bat_p_show = 1;
+        bat_p_timer = timer_read32();
+    } else if (timer_elapsed32(bat_p_timer) > 10) {
+        bat_p_timer = timer_read32();
+        bat_adjust = bat_p_current == k ? 0 : (bat_p_current < k ? 1 : -1);
+        bat_p_current += bat_adjust;
     }
 
-    for (;i < 10; i++) {
-        rgb_matrix_set_color(29 - i, 0, 0, 0);
+    bat_percent_keyled_color();
+}
+
+void bat_percent_keyled_off(void) {
+    if (bat_p_timer == 0) {
+        bat_p_timer = timer_read32();
+    } else if (timer_elapsed32(bat_p_timer) > 10) {
+        bat_p_timer = timer_read32();
+        bat_p_current -= 1;
+    }
+
+    bat_percent_keyled_color();
+
+    if (bat_p_current <= 0) {
+        bat_p_show = 0;
+        bat_p_timer = 0;
+        bat_p_current = 0;
+    }
+}
+
+uint32_t rf_keyled_timer = 0;
+uint8_t rf_keyled_flag = 0xff;
+uint8_t rf_keyled_act_flag = 0xff;
+
+void rf_keyled(void) {
+    // dprintf("mode: %d to %d\n", rf_keyled_flag, dev_info.link_mode);
+    if (rf_keyled_timer == 0 || rf_keyled_act_flag != dev_info.link_mode) {
+        rf_keyled_timer = timer_read32();
+        rf_keyled_act_flag = dev_info.link_mode;
+        rf_keyled_flag = 0xff;
+    } else if (timer_elapsed32(rf_keyled_timer) > 2000) {
+        rf_keyled_timer = 0;
+        rf_keyled_flag = dev_info.link_mode;
+    }
+
+    if (dev_info.link_mode >= LINK_BT_1 && dev_info.link_mode <= LINK_BT_3) {
+        rgb_matrix_set_color(30 - dev_info.link_mode, 128, 128, 128);
+    } else if (dev_info.link_mode == LINK_RF_24) {
+        rgb_matrix_set_color(26, 128, 128, 128);
     }
 }
 
 bool rgb_matrix_indicators_user(void) {
     if(f_bat_hold) {
         bat_percent_keyled(dev_info.rf_baterry);
+    } else if (!f_bat_hold && bat_p_show) {
+        bat_percent_keyled_off();
+    }
+
+    if (rf_keyled_flag == 0xff || rf_keyled_flag != dev_info.link_mode) {
+        rf_keyled();
     }
     return false;
 }
