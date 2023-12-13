@@ -656,11 +656,37 @@ void bat_percent_keyled_off(void) {
     }
 }
 
+uint32_t rf_keyled_timer = 0;
+uint8_t rf_keyled_flag = 0xff;
+uint8_t rf_keyled_act_flag = 0xff;
+
+void rf_keyled(void) {
+    // dprintf("mode: %d to %d\n", rf_keyled_flag, dev_info.link_mode);
+    if (rf_keyled_timer == 0 || rf_keyled_act_flag != dev_info.link_mode) {
+        rf_keyled_timer = timer_read32();
+        rf_keyled_act_flag = dev_info.link_mode;
+        rf_keyled_flag = 0xff;
+    } else if (timer_elapsed32(rf_keyled_timer) > 2000) {
+        rf_keyled_timer = 0;
+        rf_keyled_flag = dev_info.link_mode;
+    }
+
+    if (dev_info.link_mode >= LINK_BT_1 && dev_info.link_mode <= LINK_BT_3) {
+        rgb_matrix_set_color(30 - dev_info.link_mode, 128, 128, 128);
+    } else if (dev_info.link_mode == LINK_RF_24) {
+        rgb_matrix_set_color(26, 128, 128, 128);
+    }
+}
+
 bool rgb_matrix_indicators_user(void) {
     if(f_bat_hold) {
         bat_percent_keyled(dev_info.rf_baterry);
     } else if (!f_bat_hold && bat_p_show) {
         bat_percent_keyled_off();
+    }
+
+    if (rf_keyled_flag == 0xff || rf_keyled_flag != dev_info.link_mode) {
+        rf_keyled();
     }
     return false;
 }
